@@ -107,11 +107,18 @@ main { padding: 14px 12px max(16px, env(safe-area-inset-bottom)); }
 button.target { border-color: var(--blue); background: #eef2ff; box-shadow: inset 0 0 0 1px var(--blue); animation: highlight .9s ease-out; }
 @keyframes highlight { from { box-shadow: inset 0 0 0 2px var(--gold); } }
 .hand-panel { margin-top: 12px; padding: 11px 10px; border: 1px solid var(--line); border-radius: 17px; background: #fffdfa; }
-.hand { display: flex; overflow-x: auto; gap: 8px; padding: 9px 3px 10px; scroll-snap-type: x proximity; scrollbar-color: #8e9cbf #e5ebfa; }
+.hand {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 9px 2px 7px;
+}
+@media (min-width: 520px) { .hand { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (min-width: 740px) { .hand { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
 .card {
   position: relative;
   display: flex;
-  flex: 0 0 102px;
+
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
@@ -160,20 +167,21 @@ dialog h2 { margin: 0; padding: 16px 18px; background: var(--navy); color: white
   .table, .hand-panel { padding: 16px; }
   .regions, .seats { gap: 9px; }
   .region { min-height: 82px; font-size: 13px; }
-  .card { flex-basis: 113px; min-height: 135px; }
+  .card { min-height: 135px; }
 }
 @media (max-width: 350px) {
   main { padding-inline: 8px; }
   .table { padding: 9px; }
   .region { font-size: 10px; }
-  .card { flex-basis: 92px; }
+
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 
 /* Gold foil on blue card stock, with decorative printing inside the trim. */
 .card {
   isolation: isolate;
-  flex-basis: 110px;
+  min-width: 0;
+  scroll-snap-align: none;
   min-height: 155px;
   padding: 12px 8px 20px;
   border: 1px solid #90703d;
@@ -216,16 +224,15 @@ dialog h2 { margin: 0; padding: 16px 18px; background: var(--navy); color: white
   background: #071638;
   box-shadow: 0 0 0 3px #c6a56938, inset 0 0 12px #bf9b5035;
 }
-.card strong { font-size: 12px; }
+.card strong { display: grid; place-items: center; min-height: 30px; font-size: 12px; text-align: center; }
 .card:disabled { filter: saturate(.7); }
 .card.selected {
   border-color: #ffe4a5;
   box-shadow: 0 0 0 2px #b08030, 0 4px 9px #07122f55;
 }
-.card .check { top: 6px; inset-inline-end: 6px; }
+.card .check { top: 33px; inset-inline-end: 8px; }
 .card:focus-visible { outline-offset: 2px; }
-@media (min-width: 520px) { .card { flex-basis: 117px; min-height: 160px; } }
-@media (max-width: 350px) { .card { flex-basis: 98px; } }
+@media (min-width: 520px) { .card { min-height: 160px; } }
 </style>
 <header class="header"><div class="header-inner">
   <div class="brand"><span class="brand-icon" aria-hidden="true">✓</span><div><small>لعبة الانتخابات · ديمو فردي</small><h1>ليلة الفرز</h1></div></div>
@@ -236,7 +243,7 @@ dialog h2 { margin: 0; padding: 16px 18px; background: var(--navy); color: white
     <div class="bar"><strong id="round"></strong><span id="bank" class="bank"></span></div>
     <div class="seats"><div id="you" class="seat"></div><div id="opponents"></div></div>
     <div class="event" id="event" role="status"><span id="event-icon" class="event-icon" aria-hidden="true"></span><span id="event-text"></span></div>
-    <div class="section-title"><h2>مناطقك</h2><small>٤ كروت أصوات لكل منطقة</small></div>
+    <div class="section-title"><h2>مناطقك</h2><small>4 كروت أصوات لكل منطقة</small></div>
     <div id="regions" class="regions"></div>
   </section>
   <section class="hand-panel" aria-labelledby="hand-title">
@@ -249,10 +256,10 @@ dialog h2 { margin: 0; padding: 16px 18px; background: var(--navy); color: white
 <dialog id="modal" aria-labelledby="title"><h2 id="title"></h2><div id="details"></div><div id="choices"></div></dialog>
 <script>
 const $=id=>document.getElementById(id);
-const ar=n=>n.toLocaleString('ar-KW',{numberingSystem:'arab'});
+const ar=n=>n.toLocaleString('ar-KW',{numberingSystem:'latn'});
 const names=['أنت','نورة','فيصل'];
 const districts=['الشامية','سلوى','العدان','العيون','المنصورية','جزيرة فيلكا','قرطبة','القصر'];
-const cards={double:['دبل الصناديق','×٢','ضاعف حصيلة منطقة من مناطقك.'],burn:['احرق ١٠٠','✹','اختر خصمًا لحرق أصوات بمجموع ١٠٠ أو أكثر حسب المتاح.'],swap:['بدل','⇄','اختر منطقة لك عليها صوت ثم اختر المرشح الثاني.'],shield:['بالحفظ والصون','◇','احمِ أصوات منطقة من حرق الخصوم.'],block:['صعبة عليك','⊘','تلغي الهجوم عليك عند الرد.'],reverse:['وحدة بوحدة','↶','تعكس الهجوم على المهاجم عند الرد.']};
+const cards={double:['دبل الصناديق','×2','ضاعف حصيلة منطقة من مناطقك.'],burn:['احرق 100','✹','اختر خصمًا لحرق أصوات بمجموع 100 أو أكثر حسب المتاح.'],swap:['بدل','⇄','اختر منطقة لك عليها صوت ثم اختر المرشح الثاني.'],shield:['بالحفظ والصون','◇','احمِ أصوات منطقة من حرق الخصوم.'],block:['صعبة عليك','⊘','تلغي الهجوم عليك عند الرد.'],reverse:['وحدة بوحدة','↶','تعكس الهجوم على المهاجم عند الرد.']};
 let players,deck,moves,round,selected,offer,busy,done,message,activeSeat,eventTone,session=0;
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const total=r=>r.votes.reduce((a,b)=>a+b,0)*(r.double?2:1);
@@ -275,7 +282,7 @@ function seatLabel(index, summary){
 function render(){
  $('round').textContent='الدورة الأولى · الجولة '+ar(round);
  $('bank').textContent='البنك '+ar(deck.length)+' كرت';
- $('moves').textContent=done?'انتهت الدورة':busy?'دور الخصم':'الحركات '+ar(moves)+' / ٣';
+ $('moves').textContent=done?'انتهت الدورة':busy?'دور الخصم':'الحركات '+ar(moves)+' / 3';
  $('event').className='event '+eventTone;
  $('event-icon').textContent=eventTone==='success'?'✓':eventTone==='notice'?'ⓘ':'◈';
  $('event-text').textContent=message;
@@ -289,7 +296,7 @@ function render(){
  }).join('');
  $('regions').innerHTML=players[0].regions.map((r,i)=>{
   const classes='region'+(r.lock?' locked':'')+(offer===i?' chosen':legal(r)?' target':'');
-  const slots=r.lock?'🔒 مقفلة':ar(r.votes.length)+'/٤'+(r.double?' · ×٢':'')+(r.shield?' · ◇':'');
+  const slots=r.lock?'🔒 مقفلة':ar(r.votes.length)+'/4'+(r.double?' · ×2':'')+(r.shield?' · ◇':'');
   return '<button class="'+classes+'" data-region="'+i+'" '+(!legal(r)?'disabled':'')+'>'+
     r.name+'<b>'+ar(total(r))+'</b><small>'+slots+'</small></button>';
  }).join('');
@@ -349,7 +356,7 @@ function attack(p){
    if(players[0].hand.includes(c))options.push([cards[c][0],()=>{players[0].hand.splice(players[0].hand.indexOf(c),1);message=c==='reverse'?'عكست الهجوم · احترق '+ar(burn(p))+' من أصوات '+p.name:'ألغيت الهجوم';eventTone='success';resolve()}]);
   }
   options.push(['مرّر الرد',()=>{message='احترق '+ar(burn(players[0]))+' من أصواتك';eventTone='notice';resolve()}]);
-  dialog(p.name+' لعب احرق ١٠٠','تقدر تلغي الهجوم أو تعكسه إذا عندك كرت الرد.',options);
+  dialog(p.name+' لعب احرق 100','تقدر تلغي الهجوم أو تعكسه إذا عندك كرت الرد.',options);
  });
 }
 async function end(){
