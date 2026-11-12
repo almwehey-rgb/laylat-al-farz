@@ -37,11 +37,16 @@ function createHandler(store = storage) {
       if (typeof token !== 'string' || !/^[0-9a-f]{64}$/.test(token)) throw problem(401, 'ارجع للغرفة باستخدام جلسة دخولك.');
       const id = hash(token);
       if (op === 'create') {
-        const judge = { id, name, role: 'judge' };
-        const state = { phase: 'lobby', judge, players: [] };
+        const mode = input.mode ?? 'human';
+        if (mode !== 'auto' && mode !== 'human') throw problem(400, 'اختر نوع الحكم.');
+        const actor = { id, name, role: mode === 'auto' ? 'player' : 'judge' };
+        const state = mode === 'auto'
+          ? { phase: 'lobby', mode, judge: { id: 'auto', name: 'الحكم الآلي', role: 'judge', auto: true },
+              host: { id, name }, players: [actor] }
+          : { phase: 'lobby', mode, judge: actor, players: [] };
         for (let attempt = 0; attempt < 5; attempt++) {
           const code = Array.from({length: 6}, () => alphabet[randomInt(alphabet.length)]).join('');
-          if (await store('create', code, null, state)) return res.status(201).json({ code, token, state: engine.view(state, judge) });
+          if (await store('create', code, null, state)) return res.status(201).json({ code, token, state: engine.view(state, actor) });
         }
         throw problem(503, 'تعذّر إنشاء الغرفة. جرّب مرة ثانية.');
       }
@@ -51,16 +56,21 @@ function createHandler(store = storage) {
         const record = await store('read', code);
         if (!record) throw problem(404, 'الغرفة غير موجودة أو انتهت.');
         const state = record.state;
+        const members = state.mode === 'auto' ? state.players : [state.judge, ...state.players];
         let actor;
         if (op === 'join') {
           if (state.phase !== 'lobby') throw problem(409, 'المباراة بدأت.');
           if (state.players.length >= 6) throw problem(409, 'الغرفة ممتلئة.');
-          if ([state.judge, ...state.players].some(player => player.name === name)) throw problem(409, 'الاسم مستخدم بالغرفة.');
+          if (members.some(player => player.name === name)) throw problem(409, 'الاسم مستخدم بالغرفة.');
           actor = { id, name, role: 'player' };
           state.players.push(actor);
         } else {
-          actor = [state.judge, ...state.players].find(player => player.id === id);
+          actor = members.find(player => player.id === id);
           if (!actor) throw problem(401, 'جلسة دخولك غير صالحة.');
+          if (engine.tick(state)) {
+            if (!await store('write', code, record.revision, state)) continue;
+            if (op === 'act') throw problem(409, 'انتهت المهلة. حدّث الطاولة وجرّب الحركة مرة ثانية.');
+          }
           if (op === 'get') return res.status(200).json({ code, state: engine.view(state, actor) });
           if (!action || typeof action !== 'object' || Array.isArray(action)) throw problem(400, 'الحركة غير صالحة.');
           try {

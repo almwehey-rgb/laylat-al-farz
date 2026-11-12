@@ -255,7 +255,20 @@ input:focus, select:focus { outline: 2px solid var(--blue); outline-offset: 2px;
 .entry-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
 .entry-card { display: grid; align-content: start; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #fffdfa; }
 .entry-card h3 { margin: 0; font-size: 16px; }
-.entry-card p { min-height: 69px; }
+.mode-picker { display: grid; gap: 7px; border: 0; margin: 0; padding: 0; min-width: 0; }
+.mode-picker legend { padding: 0 0 5px; font-size: 13px; font-weight: bold; }
+.mode-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.mode-option:has(input:checked) { border-color: #98763a; background: #fff7df; }
+.mode-option input { flex: 0 0 16px; width: 16px; min-height: 16px; margin: 2px 0 0; accent-color: var(--blue); }
+.mode-option small { display: block; margin-top: 3px; color: var(--ink-muted); font-weight: normal; line-height: 1.5; }
 #resume { margin-top: 12px; }
 .connection { padding: 8px 12px; border: 1px solid #bf9843; border-radius: 9px; background: #fff6d8; line-height: 1.5; font-size: 13px; }
 .connection.error { border-color: #a53f2d; color: #802e20; background: #fbe9e4; }
@@ -298,7 +311,6 @@ summary { cursor: pointer; padding: 8px 1px; font-weight: bold; font-size: 14px;
 [aria-busy="true"] .controls button, [aria-busy="true"] #entry button { cursor: wait; }
 @media (max-width: 450px) {
   .entry-options { grid-template-columns: 1fr; }
-  .entry-card p { min-height: 0; }
   .regions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 .header-actions { display: flex; flex-wrap: wrap; justify-content: end; gap: 6px; }
@@ -312,7 +324,7 @@ summary { cursor: pointer; padding: 8px 1px; font-weight: bold; font-size: 14px;
 <main>
   <p id="connection" class="connection" role="status" hidden></p>
   <section id="welcome" class="table welcome">
-    <div class="welcome-title"><h2>طاولة الانتخابات</h2><p>كوّن غرفة خاصة تضم من 3 إلى 6 مرشحين وحكمًا واحدًا.</p></div>
+    <div class="welcome-title"><h2>طاولة الانتخابات</h2><p>العب مع 3 إلى 6 مرشحين في غرفة خاصة.</p></div>
     <form id="entry">
       <label>اسمك على الطاولة<input name="name" id="player-name" maxlength="24" autocomplete="nickname" required></label>
       <div class="entry-options">
@@ -322,8 +334,13 @@ summary { cursor: pointer; padding: 8px 1px; font-weight: bold; font-size: 14px;
           <button type="submit" value="join" class="primary">ادخل كمرشح</button>
         </div>
         <div class="entry-card">
-          <h3>افتح غرفة جديدة</h3><p>تدخل كحكم وتحصل على رابط دعوة تشاركه مع المرشحين.</p>
-          <button type="submit" value="create" class="utility">أنشئ غرفة كحكم</button>
+          <h3>افتح غرفة جديدة</h3>
+          <fieldset class="mode-picker">
+            <legend>طريقة التحكيم</legend>
+            <label class="mode-option"><input type="radio" name="mode" value="auto" checked><span>حكم تلقائي<small>تلعب أنت كمرشح، والتطبيق يحسم الردود ويفرز النتائج.</small></span></label>
+            <label class="mode-option"><input type="radio" name="mode" value="human"><span>حكم بشري<small>تدير أنت المباراة كحكم، والمرشحون ينضمون بكود الغرفة.</small></span></label>
+          </fieldset>
+          <button type="submit" value="create" class="primary">أنشئ الغرفة</button>
         </div>
       </div>
     </form>

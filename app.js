@@ -197,7 +197,16 @@ function cardMarkup(card) {
 }
 function updateTurnTime() {
   const timer = byId('turn-time');
-  if (!timer || !state?.turnAt) return;
+  if (!timer || !state) return;
+  const deadline = state.pending?.deadline ?? state.nextAt;
+  if (typeof deadline === 'number' && !state.paused) {
+    const seconds = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+    timer.hidden = false;
+    timer.textContent = seconds === 0 ? 'جاري حسم الإجراء…' :
+      (state.pending ? 'الوقت المتبقي للرد ' : 'الدورة التالية خلال ') + digits(seconds) + ' ثانية';
+    return;
+  }
+  if (!state.turnAt) { timer.hidden = true; return; }
   const elapsed = Math.max(0, Math.floor((Date.now() - state.turnAt) / 1000));
   timer.hidden = Boolean(state.pending || state.paused || state.phase !== 'playing');
   if (!timer.hidden) timer.textContent = elapsed < 60 ? 'وقت الدور ' + digits(elapsed) + ' ثانية' : 'مرّت 60 ثانية على بداية الدور';
@@ -225,6 +234,8 @@ function render() {
   choices = state.choices ?? [];
   const players = state.players ?? [];
   const isJudge = state.judge?.id === state.me;
+  const autoJudge = state.mode === 'auto' || state.judge?.auto;
+  const isHost = state.isHost || state.host?.id === state.me;
   const me = players.find(player => player.id === state.me);
   const hand = state.hand ?? [];
   const active = players.find(player => player.id === state.turn);
@@ -247,7 +258,8 @@ function render() {
   const discard = state.discard ?? [];
   room.innerHTML = '<section class="table" aria-label="طاولة الانتخابات"><div class="room-meta">' +
     '<span class="status-chip">الغرفة</span><strong class="code-chip" dir="ltr">' + escape(session.code) + '</strong>' +
-    '<span class="status-chip">' + (isJudge ? 'أنت الحكم' : 'الحكم ' + escape(state.judge?.name)) + '</span>' +
+    '<span class="status-chip">' + (autoJudge ? 'حكم تلقائي' : isJudge ? 'أنت الحكم' : 'الحكم ' + escape(state.judge?.name)) + '</span>' +
+    (autoJudge && isHost ? '<span class="status-chip">أنت المضيف</span>' : '') +
     '<button type="button" class="utility" data-invite>نسخ الدعوة</button>' +
     '<button type="button" class="utility" data-invite-qr>رمز QR</button></div>' +
     '<div class="room-meta"><strong>' + escape(phaseLabels[state.phase]) + '</strong>' +
@@ -261,7 +273,8 @@ function render() {
       players.filter(player => player.id !== me?.id).map(regionGroup).join('') + '</details>' : '') +
     '</section>' +
     (otherChoices.length ? '<section class="hand-panel"><div class="section-title"><h2>' +
-      (isJudge ? 'لوحة الحكم' : pending ? 'الرد على الحركة' : 'إجراءات الدور') +
+      (isJudge ? 'لوحة الحكم' : isHost && (lobby || state.phase === 'intermission') ? 'إدارة الغرفة' :
+        pending ? 'الرد على الحركة' : lobby ? 'تجهيز مقعدك' : 'إجراءات الدور') +
       '</h2></div><div class="controls choice-list">' + otherChoices.map(choice => choiceButton(choice)).join('') + '</div></section>' : '') +
     (me && !lobby && state.phase !== 'finished' ? '<section class="hand-panel"><div class="section-title"><h2>كروتك</h2><span class="moves">' +
       digits(hand.length) + '</span></div>' + (hand.length ? '<div class="hand">' + hand.map(cardMarkup).join('') + '</div>' :
@@ -407,6 +420,7 @@ byId('entry').addEventListener('submit', async event => {
   const fields = new FormData(event.target);
   const name = fields.get('name').trim();
   const code = fields.get('code').trim().toUpperCase();
+  const mode = fields.get('mode') === 'human' ? 'human' : 'auto';
   const op = event.submitter?.value ?? 'join';
   if (!name || (op === 'join' && !code)) {
     status('اكتب اسمك وكود الغرفة.', 'error');
@@ -415,7 +429,7 @@ byId('entry').addEventListener('submit', async event => {
   busy(true);
   status('جاري الاتصال…');
   try {
-    const payload = await request(op, { name, ...(op === 'join' ? { code } : {}) });
+    const payload = await request(op, { name, ...(op === 'join' ? { code } : { mode }) });
     enter({ code: payload.code, token: payload.token }, payload);
     status('تم الاتصال بالغرفة.', 'ok');
   } catch (error) {
