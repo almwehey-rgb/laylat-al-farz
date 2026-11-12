@@ -207,19 +207,21 @@ function cardMarkup(card, dealt, index) {
 function updateTurnTime() {
   const timer = byId('action-clock');
   if (!timer || !state) return;
-  const autoTurn = (state.mode === 'auto' || state.judge?.auto) && state.turnAt;
+  const autoJudge = state.mode === 'auto' || state.judge?.auto;
+  const betweenCycles = state.phase === 'intermission';
+  const moveTimer = autoJudge && state.phase === 'playing' && !state.pending;
+  const humanTurn = !autoJudge && state.phase === 'playing' && !state.pending && Number.isFinite(state.turnAt);
   const deadline = state.pending ? state.pending.deadline :
-    state.phase === 'intermission' ? state.nextAt : state.phase === 'playing' && autoTurn ? state.turnAt + 60000 : null;
-  const humanTurn = state.phase === 'playing' && !state.pending && state.turnAt && !deadline;
-  timer.hidden = Boolean(state.paused || (!deadline && !humanTurn));
+    betweenCycles ? state.nextAt : moveTimer ? state.moveDeadline : humanTurn ? state.turnAt + 60000 : null;
+  timer.hidden = Boolean(state.paused || !Number.isFinite(deadline));
   if (timer.hidden) return;
-  const seconds = Math.max(0, Math.ceil(((deadline || state.turnAt + 60000) - Date.now()) / 1000));
-  const label = state.pending ? 'وقت الرد' : state.phase === 'intermission' ? 'الدورة التالية' : 'وقت الدور';
+  const seconds = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+  const label = state.pending ? 'وقت الرد' : betweenCycles ? 'الدورة التالية' : moveTimer ? 'وقت الحركة' : 'وقت الدور';
   byId('turn-time-label').textContent = label;
   byId('turn-time').textContent = seconds === 0 ?
     (humanTurn ? 'الحكم يقدر ينهي الدور' : 'جاري الحسم…') : digits(seconds) + ' ثانية';
   const progress = byId('turn-time-progress');
-  const duration = state.pending?.duration ?? (state.phase === 'intermission' ? 15 : 60);
+  const duration = state.pending?.duration ?? (betweenCycles ? 15 : moveTimer ? state.moveDuration ?? 60 : 60);
   progress.max = Math.max(duration, seconds, 1);
   progress.value = seconds;
   progress.setAttribute('aria-label', label);
@@ -312,7 +314,7 @@ function render(previous) {
     players.flatMap(player => (player.regions ?? []).filter(region =>
       previousRegions.has(region.id) && previousRegions.get(region.id) !== JSON.stringify(region)).map(region => region.id)) : []);
   const turnChanged = Boolean(previous && state.phase === 'playing' &&
-    (state.turn !== previous.turn || state.turnAt !== previous.turnAt));
+    (previous.phase !== 'playing' || state.turn !== previous.turn || state.cycle !== previous.cycle));
   const newReaction = Boolean(previous && state.reaction &&
     (state.reaction.at !== previous.reaction?.at || state.reaction.by !== previous.reaction?.by));
   const active = players.find(player => player.id === state.turn);
