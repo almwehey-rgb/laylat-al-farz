@@ -248,7 +248,8 @@ function render() {
   room.innerHTML = '<section class="table" aria-label="طاولة الانتخابات"><div class="room-meta">' +
     '<span class="status-chip">الغرفة</span><strong class="code-chip" dir="ltr">' + escape(session.code) + '</strong>' +
     '<span class="status-chip">' + (isJudge ? 'أنت الحكم' : 'الحكم ' + escape(state.judge?.name)) + '</span>' +
-    '<button type="button" class="utility" data-invite>نسخ الدعوة</button></div>' +
+    '<button type="button" class="utility" data-invite>نسخ الدعوة</button>' +
+    '<button type="button" class="utility" data-invite-qr>رمز QR</button></div>' +
     '<div class="room-meta"><strong>' + escape(phaseLabels[state.phase]) + '</strong>' +
     (lobby ? '<span class="bank">' + digits(players.length) + ' من 6 مرشحين</span>' :
       '<span class="bank">البنك ' + digits(state.deckCount ?? 0) + '</span><span class="moves">الحركات ' + digits(state.moves ?? 0) + '</span><span id="turn-time" class="status-chip"></span>') +
@@ -319,14 +320,69 @@ function showCard(cardId) {
   byId('cancel-action').textContent = 'رجوع';
   byId('action-dialog').showModal();
 }
-async function invite() {
+function invitationUrl() {
   const url = new URL(location.pathname, location.origin);
   url.searchParams.set('room', session.code);
+  return url.href;
+}
+async function invite() {
   try {
-    await navigator.clipboard.writeText(url.href);
+    await navigator.clipboard.writeText(invitationUrl());
     status('تم نسخ رابط الدعوة.', 'ok');
   } catch {
     status('كود الغرفة ' + session.code + ' · أرسله للمرشحين.');
+  }
+}
+async function showInvitationQr() {
+  const url = invitationUrl();
+  const dialog = document.createElement('dialog');
+  dialog.setAttribute('aria-labelledby', 'invite-qr-title');
+  dialog.innerHTML = '<h2 id="invite-qr-title">دعوة الغرفة</h2>' +
+    '<div style="display:grid;justify-items:center;gap:10px;padding:14px 16px">' +
+    '<p id="invite-qr-message" class="muted-copy" role="status">جاري تجهيز الرمز…</p>' +
+    '<canvas role="img" aria-label="رمز QR للانضمام إلى الغرفة" style="width:min(100%,240px);height:auto;image-rendering:pixelated" hidden></canvas>' +
+    '<strong class="code-chip" dir="ltr"></strong>' +
+    '<div class="controls"><button type="button" class="primary" data-copy-link>نسخ رابط الدعوة</button>' +
+    '<button type="button" class="utility" data-close-qr>إغلاق</button></div></div>';
+  const message = dialog.querySelector('#invite-qr-message');
+  const canvas = dialog.querySelector('canvas');
+  const copy = dialog.querySelector('[data-copy-link]');
+  dialog.querySelector('strong').textContent = session.code;
+  dialog.querySelector('[data-close-qr]').onclick = () => dialog.close();
+  dialog.addEventListener('close', () => dialog.remove(), { once: true });
+  copy.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      copy.textContent = 'تم نسخ الرابط';
+    } catch {
+      const link = document.createElement('a');
+      link.href = url;
+      link.textContent = 'رابط الدعوة';
+      copy.replaceWith(link);
+    }
+  };
+  document.body.append(dialog);
+  dialog.showModal();
+  try {
+    const { qrcodegen } = await import('./qr-code.js');
+    const qr = qrcodegen.QrCode.encodeText(url, qrcodegen.QrCode.Ecc.MEDIUM);
+    const quietZone = 4;
+    const moduleSize = 6;
+    canvas.width = canvas.height = (qr.size + 2 * quietZone) * moduleSize;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Canvas unavailable');
+    context.fillStyle = '#fff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = '#000';
+    for (let y = 0; y < qr.size; y++) {
+      for (let x = 0; x < qr.size; x++) {
+        if (qr.getModule(x, y)) context.fillRect((x + quietZone) * moduleSize, (y + quietZone) * moduleSize, moduleSize, moduleSize);
+      }
+    }
+    canvas.hidden = false;
+    message.textContent = 'امسح الرمز بكاميرا الجوال للانضمام كمرشح.';
+  } catch {
+    message.textContent = 'تعذّر عرض الرمز. تقدر تنسخ رابط الدعوة أو تشارك كود الغرفة.';
   }
 }
 function roomClick(event) {
@@ -342,6 +398,7 @@ function roomClick(event) {
   }
   else if (card && !card.disabled) showCard(card.dataset.hand);
   else if (event.target.closest('[data-invite]')) invite();
+  else if (event.target.closest('[data-invite-qr]')) showInvitationQr();
 }
 
 byId('entry').addEventListener('submit', async event => {
