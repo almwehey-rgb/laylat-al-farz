@@ -52,10 +52,14 @@ function createHandler(store = storage) {
       }
       const code = typeof input.code === 'string' ? input.code.trim().toUpperCase() : '';
       if (code.length !== 6 || [...code].some(c => !alphabet.includes(c))) throw problem(400, 'تأكد من كود الغرفة.');
+      const emote = op === 'act' && action?.type === 'emote';
+      const sameOffer = op === 'act' && ['accept', 'intervene'].includes(action?.type) && typeof action.offer === 'string';
+      let retryGameRevision;
       for (let attempt = 0; attempt < 5; attempt++) {
         const record = await store('read', code);
         if (!record) throw problem(404, 'الغرفة غير موجودة أو انتهت.');
         const state = record.state;
+        const gameRevision = state.gameRevision ?? 0;
         const members = state.mode === 'auto' ? state.players : [state.judge, ...state.players];
         let actor;
         if (op === 'join') {
@@ -67,8 +71,12 @@ function createHandler(store = storage) {
         } else {
           actor = members.find(player => player.id === id);
           if (!actor) throw problem(401, 'جلسة دخولك غير صالحة.');
+          if (retryGameRevision !== undefined && retryGameRevision !== gameRevision)
+            throw problem(409, 'تغيّرت حالة الغرفة. حدّث الطاولة وجرّب الحركة مرة ثانية.');
           if (engine.tick(state)) {
+            state.gameRevision = gameRevision + 1;
             if (!await store('write', code, record.revision, state)) continue;
+            if (emote) continue;
             if (op === 'act') throw problem(409, 'انتهت المهلة. حدّث الطاولة وجرّب الحركة مرة ثانية.');
           }
           if (op === 'get') return res.status(200).json({ code, state: engine.view(state, actor) });
@@ -80,11 +88,12 @@ function createHandler(store = storage) {
             throw problem(422, error.message);
           }
         }
+        if (!emote) state.gameRevision = gameRevision + 1;
         if (await store('write', code, record.revision, state)) {
           return res.status(200).json({ code, ...(op === 'join' ? { token } : {}), state: engine.view(state, actor) });
         }
-        const sameOffer = action && ['accept', 'intervene'].includes(action.type) && typeof action.offer === 'string';
-        if (op === 'act' && !sameOffer) throw problem(409, 'تغيّرت حالة الغرفة. حدّث الطاولة وجرّب الحركة مرة ثانية.');
+        // Reapply a gameplay action only if concurrent writes changed reactions alone.
+        if (op === 'act' && !sameOffer && !emote) retryGameRevision = gameRevision;
       }
       throw problem(409, 'الغرفة مشغولة. جرّب مرة ثانية.');
     } catch (error) {

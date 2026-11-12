@@ -12,6 +12,13 @@ const symbols = {
   reverse: '↶', swap: '⇄', exchange: '⇄', joker: '♛', extraDraw: '+2', extraMove: '+1',
   burn100: '✹', burn200: '✹', burn300: '✹',
 };
+const emotes = {
+  clap: { icon: '👏', label: 'تصفيق' },
+  wow: { icon: '😮', label: 'مفاجأة' },
+  gg: { icon: '🤝', label: 'لعب جميل' },
+  thinking: { icon: '🤔', label: 'تفكير' },
+};
+const reactionLifetime = 5000;
 
 let session = null;
 let state = null;
@@ -148,14 +155,15 @@ async function poll() {
 function applyState(payload) {
   const signature = JSON.stringify(payload.state);
   if (signature === stateSignature) return;
+  const previous = state;
   state = payload.state;
   stateSignature = signature;
-  render();
+  render(previous);
 }
 function cardText(card) {
   return card.value == null ? card.name : digits(card.value) + ' صوت';
 }
-function seat(player) {
+function seat(player, turnChanged) {
   const active = player.id === state.turn;
   const status = [
     player.id === state.me ? 'أنت' : '',
@@ -164,52 +172,111 @@ function seat(player) {
     player.immunity ? 'حصانة ' + digits(player.immunity) : '',
     player.rest ? 'موقوف عن دوره' : '',
   ].filter(Boolean).join(' · ');
-  return '<article class="seat' + (active ? ' active' : '') + '"><strong>' + escape(player.name) +
+  return '<article class="seat' + (active ? ' active' : '') + (active && turnChanged ? ' turn-arrival' : '') + '"><strong>' + escape(player.name) +
     '</strong><small>' + digits(player.handCount ?? 0) + ' كروت' + (status ? ' · ' + escape(status) : '') + '</small>' +
     (active ? '<span class="turn">' + (player.id === state.me ? 'دورك' : 'عليه الدور') + '</span>' : '') + '</article>';
 }
-function regionMarkup(region) {
+function regionMarkup(region, changed) {
   const votes = region.votes ?? [];
   const score = votes.reduce((sum, vote) => sum + vote, 0) * (region.double ? 2 : 1);
   const extras = [region.double ? '×2' : '', region.protected ? 'محمية' : ''].filter(Boolean).join(' · ');
-  return '<article class="region' + (region.locked ? ' locked' : '') + '"><span>' + escape(region.name) +
+  return '<article class="region' + (region.locked ? ' locked' : '') + (changed ? ' region-arrival' : '') + '"><span>' + escape(region.name) +
     '</span><b>' + digits(score) + '</b>' +
     (votes.length ? '<small class="vote-values" dir="ltr">' + votes.map(digits).join(' · ') + '</small>' : '') +
     '<small>' + (region.locked ? '🔒 مقفلة' : '<bdi>' + votes.length + '/4</bdi>') +
     (extras ? ' · ' + extras : '') + '</small></article>';
 }
-function regionGroup(player) {
+function regionGroup(player, changedRegions) {
   return '<section class="region-section"><h3>' + (player.id === state.me ? 'مناطقك' : 'مناطق ' + escape(player.name)) +
-    '</h3><div class="regions">' + ((player.regions ?? []).map(regionMarkup).join('') || '<p class="muted-copy">لا توجد مناطق</p>') +
+    '</h3><div class="regions">' + ((player.regions ?? []).map(region => regionMarkup(region, changedRegions.has(region.id))).join('') || '<p class="muted-copy">لا توجد مناطق</p>') +
     '</div></section>';
 }
 function choiceButton(choice) {
   return '<button type="button" class="primary" data-choice="' + choices.indexOf(choice) + '">' + escape(choice.label) + '</button>';
 }
-function cardMarkup(card) {
+function cardMarkup(card, dealt, index) {
   const vote = card.value != null;
   const playable = choices.some(choice => choice.card === card.id);
   const symbol = vote ? digits(card.value) : (symbols[card.key] ?? '◆');
-  return '<button type="button" class="card' + (vote ? ' vote' : '') + (playable ? '' : ' unavailable') +
+  return '<button type="button" class="card' + (vote ? ' vote' : '') + (playable ? '' : ' unavailable') + (dealt ? ' card-arrival' : '') +
     (selectedCard === String(card.id) ? ' selected' : '') + '" data-hand="' + escape(card.id) +
-    '" aria-haspopup="dialog"><small>' + (vote ? 'أصوات' : 'بطاقة أمر') + '</small><b>' + symbol +
+    '"' + (dealt ? ' style="--deal-delay:' + Math.min(index, 5) * 38 + 'ms"' : '') +
+    ' aria-haspopup="dialog"><small>' + (vote ? 'أصوات' : 'بطاقة أمر') + '</small><b>' + symbol +
     '</b><strong>' + escape(vote ? 'أصوات' : card.name) + '</strong></button>';
 }
 function updateTurnTime() {
-  const timer = byId('turn-time');
+  const timer = byId('action-clock');
   if (!timer || !state) return;
-  const deadline = state.pending?.deadline ?? state.nextAt;
-  if (typeof deadline === 'number' && !state.paused) {
-    const seconds = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
-    timer.hidden = false;
-    timer.textContent = seconds === 0 ? 'جاري حسم الإجراء…' :
-      (state.pending ? 'الوقت المتبقي للرد ' : 'الدورة التالية خلال ') + digits(seconds) + ' ثانية';
-    return;
-  }
-  if (!state.turnAt) { timer.hidden = true; return; }
-  const elapsed = Math.max(0, Math.floor((Date.now() - state.turnAt) / 1000));
-  timer.hidden = Boolean(state.pending || state.paused || state.phase !== 'playing');
-  if (!timer.hidden) timer.textContent = elapsed < 60 ? 'وقت الدور ' + digits(elapsed) + ' ثانية' : 'مرّت 60 ثانية على بداية الدور';
+  const autoTurn = (state.mode === 'auto' || state.judge?.auto) && state.turnAt;
+  const deadline = state.pending ? state.pending.deadline :
+    state.phase === 'intermission' ? state.nextAt : state.phase === 'playing' && autoTurn ? state.turnAt + 60000 : null;
+  const humanTurn = state.phase === 'playing' && !state.pending && state.turnAt && !deadline;
+  timer.hidden = Boolean(state.paused || (!deadline && !humanTurn));
+  if (timer.hidden) return;
+  const seconds = Math.max(0, Math.ceil(((deadline || state.turnAt + 60000) - Date.now()) / 1000));
+  const label = state.pending ? 'وقت الرد' : state.phase === 'intermission' ? 'الدورة التالية' : 'وقت الدور';
+  byId('turn-time-label').textContent = label;
+  byId('turn-time').textContent = seconds === 0 ?
+    (humanTurn ? 'الحكم يقدر ينهي الدور' : 'جاري الحسم…') : digits(seconds) + ' ثانية';
+  const progress = byId('turn-time-progress');
+  const duration = state.pending?.duration ?? (state.phase === 'intermission' ? 15 : 60);
+  progress.max = Math.max(duration, seconds, 1);
+  progress.value = seconds;
+  progress.setAttribute('aria-label', label);
+  timer.classList.toggle('expiring', seconds > 0 && seconds <= 5);
+}
+function updateReaction() {
+  const notice = byId('reaction-notice');
+  if (notice && state?.reaction && Date.now() - state.reaction.at >= reactionLifetime) notice.textContent = '';
+}
+function reactionMarkup(changed) {
+  const reaction = state.reaction;
+  const value = reaction && Object.hasOwn(emotes, reaction.reaction) ? emotes[reaction.reaction] : null;
+  const visible = value && Date.now() - reaction.at < reactionLifetime;
+  const buttons = state.canReact ? '<div class="reaction-buttons" role="group" aria-label="تفاعل مع الطاولة">' +
+    Object.entries(emotes).map(([name, emote]) =>
+      '<button type="button" class="utility" data-emote="' + name + '"><span aria-hidden="true">' + emote.icon +
+      '</span> ' + emote.label + '</button>').join('') + '</div>' : '';
+  if (!buttons && !visible) return '';
+  return '<div class="reaction-strip">' + buttons +
+    '<p id="reaction-notice" class="reaction-notice' + (changed && visible ? ' reaction-arrival' : '') + '" role="status">' +
+    (visible ? value.icon + ' ' + escape(reaction.name) + ' · ' + value.label : '') + '</p></div>';
+}
+function actionHub({ event, turnChanged, pending, active, otherChoices, isJudge, isHost, lobby, lastCard, cardChanged, boardChanged }) {
+  if (!event && !otherChoices.length && !active) return '';
+  const onTurn = active?.id === state.me && !pending && !state.paused && state.phase === 'playing';
+  const playChoices = choices.some(choice => choice.type === 'play');
+  const canReply = pending && choices.length > 0;
+  const essential = otherChoices.filter(choice => !['move', 'ownBurn'].includes(choice.type));
+  const areaActions = otherChoices.filter(choice => ['move', 'ownBurn'].includes(choice.type));
+  const heading = isJudge ? 'لوحة الحكم' :
+    isHost && (lobby || state.phase === 'intermission') ? 'إدارة الغرفة' :
+    pending ? 'حسم الحركة' : lobby ? 'تجهيز مقعدك' :
+    onTurn ? 'دورك الآن' : active && state.phase === 'playing' ? 'دور ' + active.name : 'إجراءات المباراة';
+  let hint = '';
+  if (lobby && (isJudge || isHost)) hint = 'شارك الكود، رتّب المقاعد بعد انضمام 3 مرشحين على الأقل، ثم ابدأ المباراة.';
+  else if (lobby) hint = 'اختر المناطق إذا تبي، وانتظر المضيف يبدأ المباراة.';
+  else if (canReply && !isJudge) hint = 'اختر ردّك من الخيارات أو كرت الرد من يدك.';
+  else if (pending && !isJudge) hint = 'بانتظار رد المرشحين المعنيين.';
+  else if (onTurn && playChoices) hint = 'اختر كرتًا من يدك، حدّد الهدف وأكّد، ثم أنهِ دورك.';
+  else if (onTurn) hint = 'تقدر تنهي دورك أو تستخدم أحد الخيارات المتاحة.';
+  else if (state.phase === 'intermission') hint = 'راجع نتيجة الدورة تحت الطاولة.';
+  return '<section class="action-hub' + (onTurn ? ' your-turn' : '') + (pending ? ' awaiting-response' : '') +
+    (!isJudge && (onTurn || canReply) ? ' action-sticky' : '') +
+    (turnChanged ? ' hub-arrival' : '') + '" aria-labelledby="action-hub-title">' +
+    '<div class="section-title"><h2 id="action-hub-title">' + escape(heading) + '</h2>' +
+    (onTurn ? '<span class="turn">' + digits(state.moves ?? 0) + ' حركات</span>' : '') + '</div>' +
+    '<div id="action-clock" class="action-clock" hidden><div><span id="turn-time-label"></span><strong id="turn-time"></strong></div>' +
+    '<progress id="turn-time-progress" max="60" value="0"></progress></div>' +
+    (event && event !== heading ? '<p class="action-notice' + (boardChanged ? ' board-arrival' : '') +
+      '" role="status">' + escape(event) + '</p>' : '') +
+    (hint ? '<p class="action-hint">' + hint + '</p>' : '') +
+    (lastCard && !lobby ? '<div class="last-play' + (cardChanged ? ' play-arrival' : '') +
+      '"><span>آخر كرت في الساحة</span><strong>' + escape(cardText(lastCard)) + '</strong></div>' : '') +
+    (essential.length ? '<div class="controls choice-list">' + essential.map(choice => choiceButton(choice)).join('') + '</div>' : '') +
+    (areaActions.length ? '<details id="area-actions"><summary>نقل أو حرق أصوات مناطقك</summary><div class="controls">' +
+      areaActions.map(choice => choiceButton(choice)).join('') + '</div></details>' : '') +
+    '</section>';
 }
 function ledgerEntries(entries) {
   if (!entries?.length) return '';
@@ -228,7 +295,7 @@ function scoreSection(title, rows, highlight) {
         (first ? ' <span class="turn">المركز الأول</span>' : '') + '</span><strong>' + digits(row.score) + '</strong></li>';
     }).join('') + '</ol></section>';
 }
-function render() {
+function render(previous) {
   const room = byId('room');
   const expanded = new Set([...room.querySelectorAll('details[open]')].map(item => item.id));
   choices = state.choices ?? [];
@@ -238,6 +305,16 @@ function render() {
   const isHost = state.isHost || state.host?.id === state.me;
   const me = players.find(player => player.id === state.me);
   const hand = state.hand ?? [];
+  const knownCards = new Set((previous?.hand ?? []).map(card => card.id));
+  const previousRegions = new Map((previous?.players ?? []).flatMap(player =>
+    (player.regions ?? []).map(region => [region.id, JSON.stringify(region)])));
+  const changedRegions = new Set(previous && state.phase === 'playing' && previous.cycle === state.cycle ?
+    players.flatMap(player => (player.regions ?? []).filter(region =>
+      previousRegions.has(region.id) && previousRegions.get(region.id) !== JSON.stringify(region)).map(region => region.id)) : []);
+  const turnChanged = Boolean(previous && state.phase === 'playing' &&
+    (state.turn !== previous.turn || state.turnAt !== previous.turnAt));
+  const newReaction = Boolean(previous && state.reaction &&
+    (state.reaction.at !== previous.reaction?.at || state.reaction.by !== previous.reaction?.by));
   const active = players.find(player => player.id === state.turn);
   const otherChoices = choices.filter(choice => !hand.some(card => card.id === choice.card));
   const phaseLabels = {
@@ -249,13 +326,15 @@ function render() {
   const pending = state.pending?.label;
   const event = state.paused ? 'أوقف الحكم اللعب مؤقتًا.' :
     pending || state.notice || (active ? (active.id === state.me ? 'دورك الآن.' : 'دور ' + active.name) : '');
-  const seating = players.map(seat).join('');
+  const seating = players.map(player => seat(player, turnChanged)).join('');
   const lobby = state.phase === 'lobby';
   const resultSections = (state.results ?? []).slice().reverse()
     .map(result => scoreSection('الدورة ' + digits(result.cycle), result.rows, false)).join('');
   const ledger = scoreSection(state.phase === 'finished' ? 'النتيجة النهائية' : 'القيد التراكمي', state.ledger, state.phase === 'finished');
   const reveal = state.inspection;
   const discard = state.discard ?? [];
+  const lastCard = discard.at(-1);
+  const cardChanged = Boolean(previous && lastCard && lastCard.id !== previous.discard?.at(-1)?.id);
   room.innerHTML = '<section class="table" aria-label="طاولة الانتخابات"><div class="room-meta">' +
     '<span class="status-chip">الغرفة</span><strong class="code-chip" dir="ltr">' + escape(session.code) + '</strong>' +
     '<span class="status-chip">' + (autoJudge ? 'حكم تلقائي' : isJudge ? 'أنت الحكم' : 'الحكم ' + escape(state.judge?.name)) + '</span>' +
@@ -264,21 +343,21 @@ function render() {
     '<button type="button" class="utility" data-invite-qr>رمز QR</button></div>' +
     '<div class="room-meta"><strong>' + escape(phaseLabels[state.phase]) + '</strong>' +
     (lobby ? '<span class="bank">' + digits(players.length) + ' من 6 مرشحين</span>' :
-      '<span class="bank">البنك ' + digits(state.deckCount ?? 0) + '</span><span class="moves">الحركات ' + digits(state.moves ?? 0) + '</span><span id="turn-time" class="status-chip"></span>') +
+      '<span class="bank">البنك ' + digits(state.deckCount ?? 0) + '</span><span class="moves">الحركات ' + digits(state.moves ?? 0) + '</span>') +
     '</div>' + (seating ? '<div class="seats">' + seating + '</div>' : '<p class="muted-copy">شارك الدعوة مع المرشحين.</p>') +
-    (event ? '<p class="event' + (!pending && /تم|أُقر/.test(event) ? ' success' : '') + '" role="status">' + escape(event) + '</p>' : '') +
-    (me && (!lobby || me.regions?.length) ? regionGroup(me) : '') +
+    reactionMarkup(newReaction) +
+    '</section>' +
+    actionHub({ event, turnChanged, pending, active, otherChoices, isJudge, isHost, lobby, lastCard, cardChanged, boardChanged: changedRegions.size > 0 }) +
+    (me && !lobby && state.phase !== 'finished' ? '<section class="hand-panel"><div class="section-title"><h2>كروتك</h2><span class="moves">' +
+      digits(hand.length) + '</span></div>' + (hand.length ? '<div class="hand">' + hand.map((card, index) =>
+      cardMarkup(card, Boolean(previous && !knownCards.has(card.id)), index)).join('') + '</div>' :
+      '<p class="muted-copy">ما عندك كروت في اليد.</p>') + '</section>' : '') +
+    (!lobby || me?.regions?.length ? '<section class="hand-panel" aria-label="المناطق">' +
+    (me && (!lobby || me.regions?.length) ? regionGroup(me, changedRegions) : '') +
     (!lobby && players.some(player => player.id !== me?.id) ?
       '<details id="other-regions"><summary>' + (me ? 'مناطق المرشحين الآخرين' : 'مناطق المرشحين') + '</summary>' +
-      players.filter(player => player.id !== me?.id).map(regionGroup).join('') + '</details>' : '') +
-    '</section>' +
-    (otherChoices.length ? '<section class="hand-panel"><div class="section-title"><h2>' +
-      (isJudge ? 'لوحة الحكم' : isHost && (lobby || state.phase === 'intermission') ? 'إدارة الغرفة' :
-        pending ? 'الرد على الحركة' : lobby ? 'تجهيز مقعدك' : 'إجراءات الدور') +
-      '</h2></div><div class="controls choice-list">' + otherChoices.map(choice => choiceButton(choice)).join('') + '</div></section>' : '') +
-    (me && !lobby && state.phase !== 'finished' ? '<section class="hand-panel"><div class="section-title"><h2>كروتك</h2><span class="moves">' +
-      digits(hand.length) + '</span></div>' + (hand.length ? '<div class="hand">' + hand.map(cardMarkup).join('') + '</div>' :
-      '<p class="muted-copy">ما عندك كروت في اليد.</p>') + '</section>' : '') +
+      players.filter(player => player.id !== me?.id).map(player => regionGroup(player, changedRegions)).join('') + '</details>' : '') +
+    '</section>' : '') +
     (reveal ? '<section class="hand-panel revealed"><h3>يد ' + escape(reveal.name) + '</h3><div class="discards">' +
       reveal.hand.map(card => '<span>' + escape(cardText(card)) + '</span>').join('') + '</div></section>' : '') +
     (ledger || resultSections ? '<section class="hand-panel">' + ledger + resultSections + ledgerEntries(state.entries) + '</section>' : '') +
@@ -398,12 +477,32 @@ async function showInvitationQr() {
     message.textContent = 'تعذّر عرض الرمز. تقدر تنسخ رابط الدعوة أو تشارك كود الغرفة.';
   }
 }
+async function quickAction(action) {
+  if (locked || !session) return;
+  busy(true);
+  try {
+    const payload = await request('act', { ...session, action });
+    applyState(payload);
+  } catch (error) {
+    status(error.status ? error.message : 'تعذّر إرسال الحركة. جرّب مرة ثانية.', 'error');
+  } finally {
+    busy(false);
+    schedulePoll();
+  }
+}
 function roomClick(event) {
   if (locked) return;
   const choice = event.target.closest('[data-choice]');
   const cardChoice = event.target.closest('[data-card-choice]');
   const card = event.target.closest('[data-hand]');
-  if (choice && choices[Number(choice.dataset.choice)]) openChoice(choices[Number(choice.dataset.choice)]);
+  const emote = event.target.closest('[data-emote]');
+  if (choice && choices[Number(choice.dataset.choice)]) {
+    const selected = choices[Number(choice.dataset.choice)];
+    if (selected.type === 'pass' && !selected.fields?.length) {
+      const { label, description, fields, ...action } = selected;
+      quickAction(action);
+    } else openChoice(selected);
+  }
   else if (cardChoice && cardChoices[Number(cardChoice.dataset.cardChoice)]) {
     const selection = cardChoices[Number(cardChoice.dataset.cardChoice)];
     cardChoices = [];
@@ -412,6 +511,9 @@ function roomClick(event) {
   else if (card && !card.disabled) showCard(card.dataset.hand);
   else if (event.target.closest('[data-invite]')) invite();
   else if (event.target.closest('[data-invite-qr]')) showInvitationQr();
+  else if (emote && state.canReact && Object.hasOwn(emotes, emote.dataset.emote)) {
+    quickAction({ type: 'emote', reaction: emote.dataset.emote });
+  }
 }
 
 byId('entry').addEventListener('submit', async event => {
@@ -479,7 +581,10 @@ byId('action-fields').onclick = roomClick;
 byId('home').onclick = () => { if (!locked) { status(); showEntry(); } };
 
 const invitation = new URL(location.href).searchParams.get('room');
-setInterval(updateTurnTime, 1000);
+setInterval(() => {
+  updateTurnTime();
+  updateReaction();
+}, 1000);
 if (invitation) byId('room-code').value = invitation.toUpperCase().slice(0, 10);
 const activeSeat = storageRead(sessionStorage) || storageRead(localStorage);
 if (activeSeat && (!invitation || activeSeat.code === invitation.toUpperCase())) reconnect(activeSeat);

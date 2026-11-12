@@ -315,6 +315,78 @@ summary { cursor: pointer; padding: 8px 1px; font-weight: bold; font-size: 14px;
 }
 .header-actions { display: flex; flex-wrap: wrap; justify-content: end; gap: 6px; }
 .header-actions a { display: inline-flex; align-items: center; text-decoration: none; }
+.action-hub {
+  margin-top: 11px;
+  padding: 11px 13px;
+  border: 1px solid #acb8d5;
+  border-inline-start: 4px solid var(--blue);
+  border-radius: 12px;
+  background: #fffdfa;
+  box-shadow: 0 4px 14px #14234d18;
+}
+.action-hub.your-turn {
+  border-color: #b18b3f;
+  background: linear-gradient(110deg, #fff2ce, #fffdfa 62%);
+}
+.action-hub.awaiting-response { background: #f3f6ff; }
+.action-hub h2 { font-size: 16px; }
+.action-notice, .action-hint { margin: 5px 0; color: var(--ink-muted); font-size: 12px; line-height: 1.5; }
+.action-notice { color: var(--navy); font-weight: bold; }
+.action-clock {
+  display: grid;
+  gap: 5px;
+  margin: 6px 0;
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: #e8edfc;
+}
+.action-clock div { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 12px; }
+.action-clock strong { font-size: 15px; font-variant-numeric: tabular-nums; }
+.action-clock progress { display: block; width: 100%; height: 8px; accent-color: var(--blue); }
+.action-clock.expiring { color: #742919; background: #fff0df; }
+.action-clock.expiring progress { accent-color: #9b3e27; }
+.last-play { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-block: 7px; font-size: 12px; }
+.last-play span { color: var(--ink-muted); }
+.last-play strong {
+  display: inline-block;
+  padding: 2px 9px;
+  border: 3px double #c49d54;
+  border-radius: 6px;
+  color: #ffe4a5;
+  background: var(--navy);
+}
+.reaction-strip { margin-top: 7px; }
+.reaction-buttons { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.reaction-buttons .utility { min-height: 44px; padding: 5px 3px; font-size: 11px; }
+.reaction-buttons span { font-size: 16px; }
+.reaction-notice { min-height: 18px; margin: 5px 0 0; color: var(--navy); font-size: 12px; font-weight: bold; }
+.card-arrival { animation: card-arrival 420ms cubic-bezier(.16, .9, .24, 1) var(--deal-delay, 0ms) backwards; }
+.turn-arrival, .hub-arrival { animation: turn-arrival 540ms ease-out; }
+.play-arrival strong { animation: play-arrival 440ms ease-out; }
+.reaction-arrival { animation: play-arrival 300ms ease-out; }
+.board-arrival, .region-arrival { animation: board-arrival 680ms ease-out; }
+@keyframes card-arrival {
+  from { opacity: .2; transform: translateY(-22px) rotate(-9deg) scale(.90); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes turn-arrival {
+  from { outline: 3px solid #ddc065; outline-offset: 3px; }
+  to { outline: 3px solid transparent; outline-offset: 0; }
+}
+@keyframes play-arrival {
+  from { opacity: .3; transform: translateX(20px) rotate(5deg) scale(.9); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes board-arrival {
+  from { background-color: #ffe7a6; box-shadow: 0 0 0 3px #ddc065; }
+  to { background-color: transparent; box-shadow: 0 0 0 0 transparent; }
+}
+@media (max-width: 520px) {
+  .action-sticky:not(:has(details[open])) { position: sticky; top: 5px; z-index: 3; }
+}
+@media (max-width: 350px) {
+  .reaction-buttons { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 </style>
 <body>
 <header class="header"><div class="header-inner">
