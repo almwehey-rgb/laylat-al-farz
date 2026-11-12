@@ -301,11 +301,13 @@ summary { cursor: pointer; padding: 8px 1px; font-weight: bold; font-size: 14px;
   .entry-card p { min-height: 0; }
   .regions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+.header-actions { display: flex; flex-wrap: wrap; justify-content: end; gap: 6px; }
+.header-actions a { display: inline-flex; align-items: center; text-decoration: none; }
 </style>
 <body>
 <header class="header"><div class="header-inner">
   <div class="brand"><span class="brand-icon" aria-hidden="true">◆</span><div><small>اللعب الجماعي</small><h1>ليلة الفرز</h1></div></div>
-  <button id="home" class="utility" hidden>شاشة الدخول</button>
+  <nav class="header-actions" aria-label="روابط اللعبة"><a class="utility" href="/guide.html">دليل اللعب</a><button id="home" class="utility" hidden>شاشة الدخول</button></nav>
 </div></header>
 <main>
   <p id="connection" class="connection" role="status" hidden></p>

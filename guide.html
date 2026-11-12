@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>طريقة اللعب · ليلة الفرز</title>
+<style>
+:root { color-scheme: light; --ink: #0f1f4d; --blue: #3455a6; --gold: #ddc065; --paper: #f1ede1; --line: #d8cfb8; --muted: #465569; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.65 Tahoma, Arial, sans-serif; }
+header { color: white; background: var(--ink); border-bottom: 4px solid var(--gold); }
+header div, main { max-width: 780px; margin: auto; }
+header div { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 14px 16px; }
+h1 { margin: 0; font-size: clamp(23px, 6vw, 33px); }
+header a { color: white; }
+a { color: #29458b; }
+nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+nav a, header a { padding: 8px 12px; border: 1px solid currentColor; border-radius: 9px; font-size: 13px; font-weight: bold; text-decoration: none; }
+nav a:focus-visible, header a:focus-visible { outline: 3px solid #a47623; outline-offset: 2px; }
+main { padding: 14px 12px max(18px, env(safe-area-inset-bottom)); }
+.panel { padding: clamp(12px, 4vw, 20px); margin-bottom: 12px; border: 1px solid var(--line); border-radius: 16px; background: #fffdfa; }
+h2 { margin: 0 0 10px; font-size: 21px; }
+h3 { margin: 0 0 6px; font-size: 16px; }
+p { margin: 0 0 8px; }
+p:last-child, ul:last-child, ol:last-child { margin-bottom: 0; }
+ul, ol { margin-block: 6px 10px; padding-inline-start: 22px; }
+li + li { margin-top: 6px; }
+.muted { color: var(--muted); }
+table { width: 100%; border-collapse: collapse; text-align: center; font-size: 14px; }
+th, td { padding: 6px 3px; border-bottom: 1px solid var(--line); }
+th { background: #eef1fa; }
+.examples { display: grid; gap: 10px; padding: 0; margin: 0; list-style: none; }
+.examples li { margin: 0; padding: 11px; border: 1px solid var(--line); border-radius: 11px; background: #faf7ee; }
+.chain { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-block: 3px 8px; }
+.chip { display: inline-flex; align-items: center; border: 3px double #ba9956; border-radius: 7px; padding: 3px 8px; color: #ffe7ad; background: radial-gradient(ellipse at top, #19397b, #081435); font-size: 12px; font-weight: bold; }
+.arrow { color: var(--muted); }
+.result { color: #146344; font-weight: bold; }
+summary { padding: 6px 0; cursor: pointer; font-weight: bold; }
+footer { font-size: 13px; padding: 2px 4px; }
+</style>
+</head>
+<body>
+<header><div><h1>طريقة لعب ليلة الفرز</h1><a href="/">الطاولة</a></div></header>
+<main>
+<nav aria-label="أقسام الدليل"><a href="#setup">التجهيز</a><a href="#turn">الدور</a><a href="#responses">الردود والبدل</a><a href="#examples">أمثلة الردود</a><a href="#cards">الكروت</a><a href="#count">الفرز</a></nav>
+
+<section class="panel" id="setup">
+<h2>التجهيز</h2>
+<p>ينشئ الحكم غرفة خاصة ويرسل كودها للمرشحين. بعد ترتيب المقاعد واختيار أول مرشح، يوزّع التطبيق المناطق والكروت. يتحرك الدور باتجاه اليمين ويتغيّر المرشح الذي يبدأ كل دورة إلى اللي على يمين أول مرشح في الدورة السابقة.</p>
+<table>
+<thead><tr><th scope="col">المرشحون</th><th scope="col">المناطق لكل مرشح</th><th scope="col">الدورات</th></tr></thead>
+<tbody><tr><td>3</td><td>8</td><td>3</td></tr><tr><td>4</td><td>6</td><td>4</td></tr><tr><td>5</td><td>5</td><td>5</td></tr><tr><td>6</td><td>4</td><td>6</td></tr></tbody>
+</table>
+<p class="muted">بطاقات المناطق خارج البنك. يبدأ كل مرشح كل دورة بـ 5 كروت من بنك كروت الأصوات والأوامر.</p>
+</section>
+
+<section class="panel" id="turn">
+<h2>الدور والطاولة</h2>
+<ul>
+<li>في بداية دورك تسحب كرتين، ثم عندك 3 حركات. تقدر تلعب أمرًا، أو تضيف صوتًا إلى منطقة مفتوحة، أو تنقل صوتًا بين منطقتين مفتوحتين من مناطقك، أو تحرق صوتًا منها.</li>
+<li>لكل منطقة 4 خانات أصوات. كرت الصفر يشغل خانة. الأصوات الموضوعة تبقى على الطاولة، واليد خاصة. بعد نهاية الدور تُحرق الكروت الزائدة عن 7 عشوائيًا.</li>
+<li>تقدر تنهي الدور مبكرًا. بعد مرور 60 ثانية يقدر الحكم ينهي دور المرشح اللي يماطل.</li>
+<li>الأوامر الذاتية تُنفّذ في دورك. الأوامر العامة التي تستهدف مرشحًا قد توقف الحركة لحسم الردود. لعب رد صالح خارج دورك ما يستهلك حركة.</li>
+</ul>
+</section>
+
+<section class="panel" id="responses">
+<h2>الردود والبدل</h2>
+<ul>
+<li><span class="chip">صعبة عليك</span> تلغي أمرًا أو ردًا موجّهًا لك. <span class="chip">ازهلها</span> يتدخل بها مرشح ثالث لصالح أحد الطرفين. لكل جهة رد واحد من كل نوع.</li>
+<li><span class="chip">وحدة بوحدة</span> تعكس الهجوم الأصلي على صاحبه. يقدر المهاجم يرد بصعبة عليك. العكس ما يتكرر فوق عكس، وما ينطبق على كسر البدل.</li>
+<li><span class="chip">بدل</span> يعرض مرشح على آخر إقفال منطقة من كل طرف. لازم تكون المنطقتان مفتوحتين وفي كل وحدة كرت صوت على الأقل، ولو قيمته 0. يحصل كل طرف على مجموع المنطقتين بعد احتساب الدبل.</li>
+<li>الشريك يقبل أو يرفض. قبل ردّه، يقدر طرف ثالث يلعب <span class="chip">كسر البدل</span> لإيقاف العرض أو <span class="chip">بدل غير مرشح</span> لإجبار صاحب العرض على اختيار شريك آخر. إذا أُلغي التدخل يرجع العرض قائمًا. عند تزامن القبول والتدخل، يحدد الحكم أي إجراء يعتمد أولًا.</li>
+</ul>
+</section>
+
+<section class="panel" id="examples">
+<h2>أمثلة حسم الردود</h2>
+<ol class="examples">
+<li><h3>1. هجوم صمد أمام أربعة ردود</h3>
+<div class="chain"><span class="chip">أ · احرق 300</span><span class="arrow">←</span><span class="chip">ب · صعبة عليك</span><span class="arrow">←</span><span class="chip">أ · صعبة عليك</span><span class="arrow">←</span><span class="chip">ج · ازهلها لب</span><span class="arrow">←</span><span class="chip">د · ازهلها لأ</span></div>
+<p><span class="result">النتيجة</span> ينفذ الحرق على ب.</p></li>
+<li><h3>2. المهاجم يرد في آخر السلسلة</h3>
+<div class="chain"><span class="chip">أ · حرق</span><span class="arrow">←</span><span class="chip">ب · صعبة عليك</span><span class="arrow">←</span><span class="chip">ج · ازهلها لأ</span><span class="arrow">←</span><span class="chip">د · ازهلها لب</span><span class="arrow">←</span><span class="chip">أ · صعبة عليك</span></div>
+<p><span class="result">النتيجة</span> يظل أمر الحرق نافذًا على ب.</p></li>
+<li><h3>3. الحد لكل جهة</h3>
+<div class="chain"><span class="chip">أ · حرق</span><span class="arrow">←</span><span class="chip">ب · صعبة عليك</span><span class="arrow">←</span><span class="chip">أ · صعبة عليك</span><span class="arrow">←</span><span class="chip">ب · صعبة عليك ثانية</span></div>
+<p><span class="result">النتيجة</span> رد ب الثاني غير مسموح، وينفذ الحرق.</p></li>
+<li><h3>4. عكس الهجوم بعد الردود</h3>
+<div class="chain"><span class="chip">أ · حرق</span><span class="arrow">←</span><span class="chip">ب · وحدة بوحدة</span><span class="arrow">←</span><span class="chip">أ · صعبة عليك</span><span class="arrow">←</span><span class="chip">ج · ازهلها لب</span><span class="arrow">←</span><span class="chip">د · ازهلها لأ</span><span class="arrow">←</span><span class="chip">ب · صعبة عليك</span></div>
+<p><span class="result">النتيجة</span> ينعكس الحرق على أ.</p></li>
+<li><h3>5. كسر البدل بعد التدخلات</h3>
+<div class="chain"><span class="chip">أ · بدل مع ب</span><span class="arrow">←</span><span class="chip">ج · كسر البدل</span><span class="arrow">←</span><span class="chip">أ · صعبة عليك</span><span class="arrow">←</span><span class="chip">ج · صعبة عليك</span><span class="arrow">←</span><span class="chip">ب · ازهلها لأ</span><span class="arrow">←</span><span class="chip">د · ازهلها لج</span></div>
+<p><span class="result">النتيجة</span> ينكسر البدل. لا يمكن عكس كرت كسر البدل.</p></li>
+<li><h3>6. تغيير الشريك أكثر من مرة</h3>
+<div class="chain"><span class="chip">أ · بدل مع ب</span><span class="arrow">←</span><span class="chip">بدل غير مرشح</span><span class="arrow">←</span><span class="chip">أ · بدل مع ج</span><span class="arrow">←</span><span class="chip">بدل غير مرشح</span><span class="arrow">←</span><span class="chip">أ · بدل مع د</span><span class="arrow">←</span><span class="chip">بدل غير مرشح</span></div>
+<p><span class="result">النتيجة</span> يستبعد كل تدخل ناجح الشريك الحالي حتى نهاية الحركة، فيبقى هـ وحده خيارًا.</p></li>
+<li><h3>7. تدخلان مستقلان في العرض نفسه</h3>
+<div class="chain"><span class="chip">أ · بدل مع ب</span><span class="arrow">←</span><span class="chip">ج · كسر البدل</span><span class="arrow">←</span><span class="chip">أ · صعبة عليك</span><span class="arrow">←</span><span class="chip">ج · كسر البدل مرة ثانية</span><span class="arrow">←</span><span class="chip">أ · صعبة عليك</span></div>
+<p><span class="result">النتيجة</span> العرض قائم. كل تدخل بدأ سلسلة ردود جديدة، فجاز لأ أن يرد في المرتين.</p></li>
+</ol>
+</section>
+
+<section class="panel" id="cards">
+<h2>مرجع الكروت</h2>
+<p>كروت الأصوات قيمها <bdi>0، 20، 40، 60، 80، 120، 180، 250، 300، 500</bdi>.</p>
+<details><summary>الأوامر العامة</summary>
+<ul>
+<li><strong>استريح</strong> يتجاوز المستهدف دوره التالي من غير سحب. إذا انعكس الأمر، ينتهي دور المهاجم الحالي.</li>
+<li><strong>بدل</strong> يقفل منطقتين ويسجّل مجموعهما لكل طرف.</li>
+<li><strong>اطحس</strong> يتبادل المرشحان كامل اليد بعد لعب الكرت.</li>
+<li><strong>تفتيش</strong> يعرض لك يد المستهدف على انفراد.</li>
+<li><strong>اقطع المايك</strong> يوقف كلام المستهدف وصوته لمدة 3 أدوار. يظل له حق الدفاع عن نفسه.</li>
+<li><strong>ما تستاهلها</strong> ينقل منطقة مفتوحة إليك بأصواتها وكروتها المثبتة حتى نهاية الدورة.</li>
+<li><strong>احرق ورقة</strong> تختار كرتًا مقلوبًا من يد المستهدف لحرقه.</li>
+<li><strong>احرق 100 أو 200 أو 300</strong> يختار المستهدف أصواتًا من مناطقه المفتوحة وغير المحمية تبلغ الحد المطلوب، أو يحرق المتاح كله إذا كان أقل.</li>
+<li><strong>رفع الحصانة</strong> يزيل الحصانة المتراكمة. يستمر قيد سحب الصلاحيات.</li>
+<li><strong>طرح الثقة</strong> يفتح تصويتًا في الدورات الوسطى. الأغلبية تطرد المرشح حتى الدورة التالية. بدلاته المسجلة تبقى.</li>
+<li><strong>سحب صلاحيات</strong> يمنع المستهدف من مهاجمتك لبقية الدورة. يقدر يدافع عن نفسه ويقبل بدلًا.</li>
+<li><strong>رسوم التسجيل</strong> يطلب من المرشحين المؤهلين تسليم أصوات بقيمة 100 أو المتاح. يوزّع المستلم الأصوات على مناطقه المفتوحة. يُحرق ما يتعذّر وضعه.</li>
+</ul></details>
+<details><summary>الردود</summary>
+<ul>
+<li><strong>كسر البدل</strong> يتدخل مرشح ثالث لإيقاف عرض قائم.</li>
+<li><strong>بدل غير مرشح</strong> يستبعد الشريك الحالي من خيارات العرض إلى نهاية الحركة.</li>
+<li><strong>صعبة عليك</strong> تلغي أمرًا عامًا أو ردًا موجّهًا إليك.</li>
+<li><strong>ازهلها</strong> تدخل دفاعًا عن مرشح آخر.</li>
+<li><strong>وحدة بوحدة</strong> تعكس هجومًا أصليًا على المهاجم.</li>
+</ul></details>
+<details><summary>الأوامر الذاتية</summary>
+<ul>
+<li><strong>حصانة</strong> تمنح حماية 3 جولات. التكرار يمددها.</li>
+<li><strong>دبل الصناديق</strong> يضاعف مجموع المنطقة في الفرز والبدل، بما فيه الأصوات التي توضع لاحقًا.</li>
+<li><strong>بالحفظ والصون</strong> يحمي أصوات المنطقة من حرق الخصوم.</li>
+<li><strong>جلسة سرية</strong> تعرض القيد لك على انفراد 60 ثانية.</li>
+<li><strong>استقالة</strong> تسجّل حصيلة مناطقك، وتحرق يدك وتخرج حتى الدورة التالية.</li>
+<li><strong>اسحب بطاقتين إضافيتين</strong> تسحب كرتين بحركة واحدة.</li>
+<li><strong>زيادة لعبة</strong> تضيف حركة بلا خصم حركة، قبل استنفاد الحركات الأصلية.</li>
+<li><strong>راحت عليكم</strong> تسترجع كرتًا من الساحة المكشوفة إلى يدك.</li>
+</ul></details>
+<details><summary>أوامر النهاية والجوكر</summary>
+<ul>
+<li><strong>فرز الصناديق</strong> ينهي الدورة الوسطى فورًا ويحتسب حصيلة المناطق.</li>
+<li><strong>رفع الجلسة</strong> ينهي الدورة الوسطى ويصفّر الحصيلة غير المسجلة. تظل البدلات والاستقالات محسوبة.</li>
+<li><strong>البشت</strong> يقلّد كرتًا تختاره ويتبع توقيته وشروطه. يقدر يصير كرت صوت حتى 500.</li>
+</ul></details>
+</section>
+
+<section class="panel" id="count">
+<h2>الفرز والقيد</h2>
+<p>تنتهي الدورة بعد نفاد البنك وإكمال الدور الجاري، أو فور اعتماد أمر نهائي صالح. تُحتسب أصوات المناطق المفتوحة وتُضاف إلى ما سُجّل من بدلات واستقالات، ثم تُطرح العقوبات. المناطق المقفلة احتُسبت وقت البدل.</p>
+<p><strong>مثال البدل</strong> إذا كانت المنطقة الأولى فيها 120 صوتًا وعليها دبل، والثانية فيها 80 صوتًا، ينضاف <bdi>320</bdi> صوتًا لكل طرف وتُقفل المنطقتان.</p>
+<p>يشوف المرشحون نتيجة كل دورة. التراكمي يظل عند الحكم إلى إعلان النتيجة النهائية، ويُعرض مؤقتًا لمن لعب جلسة سرية. أعلى مجموع يفوز، وإذا تعادل أكثر من مرشح يشتركون في المركز.</p>
+</section>
+<footer><a href="https://alentkhbat.com/pages/%D9%82%D9%88%D8%A7%D9%86%D9%8A%D9%86-%D8%A7%D9%84%D9%84%D8%B9%D8%A8%D8%A9#law">اللائحة الأصلية</a> · <a href="https://alentkhbat.com/pages/%D9%82%D9%88%D8%A7%D9%86%D9%8A%D9%86-%D8%A7%D9%84%D9%84%D8%B9%D8%A8%D8%A9#groups">مجموعات الكروت الأصلية</a> · <a href="https://alentkhbat.com/cdn/shop/t/30/assets/card-rusoom.png?v=18726898479441710031792051978">صورة كرت رسوم التسجيل</a></footer>
+</main>
+</body>
+</html>
