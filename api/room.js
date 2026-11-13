@@ -54,6 +54,8 @@ function createHandler(store = storage) {
       if (code.length !== 6 || [...code].some(c => !alphabet.includes(c))) throw problem(400, 'تأكد من كود الغرفة.');
       const emote = op === 'act' && action?.type === 'emote';
       const sameOffer = op === 'act' && ['accept', 'intervene'].includes(action?.type) && typeof action.offer === 'string';
+      const taggedResponse = op === 'act' && action?.type === 'respond' && typeof action.response === 'string' &&
+        typeof action.side === 'string' && Number.isInteger(action.step);
       let retryGameRevision;
       for (let attempt = 0; attempt < 5; attempt++) {
         const record = await store('read', code);
@@ -71,7 +73,8 @@ function createHandler(store = storage) {
         } else {
           actor = members.find(player => player.id === id);
           if (!actor) throw problem(401, 'جلسة دخولك غير صالحة.');
-          if (retryGameRevision !== undefined && retryGameRevision !== gameRevision)
+          const concurrentAid = taggedResponse && retryGameRevision !== undefined && gameRevision === retryGameRevision + 1;
+          if (retryGameRevision !== undefined && retryGameRevision !== gameRevision && !concurrentAid)
             throw problem(409, 'تغيّرت حالة الغرفة. حدّث الطاولة وجرّب الحركة مرة ثانية.');
           if (engine.tick(state)) {
             state.gameRevision = gameRevision + 1;
@@ -81,19 +84,24 @@ function createHandler(store = storage) {
           }
           if (op === 'get') return res.status(200).json({ code, state: engine.view(state, actor) });
           if (!action || typeof action !== 'object' || Array.isArray(action)) throw problem(400, 'الحركة غير صالحة.');
-          try {
-            if (action.type === 'start') engine.start(state, actor, action);
-            else engine.act(state, actor, action);
-          } catch (error) {
-            throw problem(422, error.message);
+          if (concurrentAid) {
+            if (!engine.burnSimultaneousAid(state, actor, action))
+              throw problem(409, 'تغيّرت حالة الردود. حدّث الطاولة.');
+          } else {
+            try {
+              if (action.type === 'start') engine.start(state, actor, action);
+              else engine.act(state, actor, action);
+            } catch (error) {
+              throw problem(422, error.message);
+            }
           }
         }
         if (!emote) state.gameRevision = gameRevision + 1;
         if (await store('write', code, record.revision, state)) {
           return res.status(200).json({ code, ...(op === 'join' ? { token } : {}), state: engine.view(state, actor) });
         }
-        // Reapply a gameplay action only if concurrent writes changed reactions alone.
-        if (op === 'act' && !sameOffer && !emote) retryGameRevision = gameRevision;
+        // Preserve the original revision for an eligible aid submitted with another aid.
+        if (op === 'act' && !sameOffer && !emote) retryGameRevision ??= gameRevision;
       }
       throw problem(409, 'الغرفة مشغولة. جرّب مرة ثانية.');
     } catch (error) {
