@@ -337,6 +337,8 @@ function render(previous) {
   const discard = state.discard ?? [];
   const lastCard = discard.at(-1);
   const cardChanged = Boolean(previous && lastCard && lastCard.id !== previous.discard?.at(-1)?.id);
+  const lobbyTimer = lobby && autoJudge && Number.isFinite(state.moveDuration) ?
+    '<span class="moves">مهلة كل حركة ' + digits(state.moveDuration) + ' ثانية</span>' : '';
   room.innerHTML = '<section class="table" aria-label="طاولة الانتخابات"><div class="room-meta">' +
     '<span class="status-chip">الغرفة</span><strong class="code-chip" dir="ltr">' + escape(session.code) + '</strong>' +
     '<span class="status-chip">' + (autoJudge ? 'حكم تلقائي' : isJudge ? 'أنت الحكم' : 'الحكم ' + escape(state.judge?.name)) + '</span>' +
@@ -344,7 +346,7 @@ function render(previous) {
     '<button type="button" class="utility" data-invite>نسخ الدعوة</button>' +
     '<button type="button" class="utility" data-invite-qr>رمز QR</button></div>' +
     '<div class="room-meta"><strong>' + escape(phaseLabels[state.phase]) + '</strong>' +
-    (lobby ? '<span class="bank">' + digits(players.length) + ' من 6 مرشحين</span>' :
+    (lobby ? '<span class="bank">' + digits(players.length) + ' من 6 مرشحين</span>' + lobbyTimer :
       '<span class="bank">البنك ' + digits(state.deckCount ?? 0) + '</span><span class="moves">الحركات ' + digits(state.moves ?? 0) + '</span>') +
     '</div>' + (seating ? '<div class="seats">' + seating + '</div>' : '<p class="muted-copy">شارك الدعوة مع المرشحين.</p>') +
     reactionMarkup(newReaction) +
